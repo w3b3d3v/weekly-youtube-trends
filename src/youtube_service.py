@@ -112,7 +112,20 @@ class YouTubeService:
             
             request = self.youtube.search().list_next(request, response)
             
-        return videos
+        # After processing all videos, create a weekly channel summary
+        if videos:
+            print(f"Gerando resumo semanal para o canal...")
+            channel_info = self.get_channel_info(channel_id)
+            if channel_info:
+                weekly_summary = self.claude_service.create_weekly_channel_summary(
+                    channel_info['title'],
+                    videos
+                )
+                # Update channel info with weekly summary
+                channel_info.update(weekly_summary)
+                return videos, channel_info
+            
+        return videos, None
 
     def get_video_statistics(self, video_id):
         """Get video statistics"""
