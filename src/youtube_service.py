@@ -4,11 +4,13 @@ from dateutil import parser
 from config import YOUTUBE_API_KEY
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
+from claude_service import ClaudeService
 
 class YouTubeService:
     def __init__(self):
         print("Inicializando serviço do YouTube...")
         self.youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+        self.claude_service = ClaudeService()
 
     def get_channel_info(self, channel_id):
         """Get channel information"""
@@ -91,6 +93,20 @@ class YouTubeService:
                 print(f"Buscando transcrição para o vídeo: {video_data['title']}")
                 transcript_data = self.get_video_transcript(video_data['id'])
                 video_data.update(transcript_data)
+                
+                # Generate summary if transcript is available
+                if video_data['has_transcript']:
+                    print(f"Gerando resumo para o vídeo: {video_data['title']}")
+                    summary_data = self.claude_service.summarize_transcript(
+                        video_data['transcript'],
+                        video_data['title']
+                    )
+                    video_data.update(summary_data)
+                else:
+                    video_data.update({
+                        'summary': '',
+                        'has_summary': False
+                    })
                 
                 videos.append(video_data)
             
