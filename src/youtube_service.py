@@ -2,6 +2,8 @@ from googleapiclient.discovery import build
 from datetime import datetime, timedelta
 from dateutil import parser
 from config import YOUTUBE_API_KEY
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
 
 class YouTubeService:
     def __init__(self):
@@ -31,6 +33,25 @@ class YouTubeService:
             'view_count': channel['statistics']['viewCount'],
             'video_count': channel['statistics']['videoCount']
         }
+
+    def get_video_transcript(self, video_id):
+        """Get video transcript if available"""
+        try:
+            transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'en'])
+            
+            # Combine all transcript pieces into one text
+            full_transcript = ' '.join([entry['text'] for entry in transcript_list])
+            
+            return {
+                'transcript': full_transcript,
+                'has_transcript': True
+            }
+        except (NoTranscriptAvailable, TranscriptsDisabled) as e:
+            print(f"❌ Transcrição não disponível para o vídeo {video_id}: {str(e)}")
+            return {
+                'transcript': '',
+                'has_transcript': False
+            }
 
     def get_recent_videos(self, channel_id):
         """Get videos published in the last 7 days"""
@@ -65,6 +86,11 @@ class YouTubeService:
                 print(f"Buscando estatísticas para o vídeo: {video_data['title']}")
                 video_stats = self.get_video_statistics(video_data['id'])
                 video_data.update(video_stats)
+                
+                # Get video transcript
+                print(f"Buscando transcrição para o vídeo: {video_data['title']}")
+                transcript_data = self.get_video_transcript(video_data['id'])
+                video_data.update(transcript_data)
                 
                 videos.append(video_data)
             
