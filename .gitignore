@@ -1,0 +1,4 @@
+weekly-trends-env/
+.env
+firebase-credentials.json
+*/__pycache__
