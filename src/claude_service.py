@@ -122,4 +122,53 @@ class ClaudeService:
             return {
                 'weekly_summary': '',
                 'has_weekly_summary': False
+            }
+
+    def create_master_weekly_summary(self, channel_summaries):
+        """Create a consolidated summary of all channels' weekly content"""
+        try:
+            if not channel_summaries:
+                return {
+                    'master_summary': '',
+                    'has_master_summary': False
+                }
+
+            # Get prompt from Firebase
+            latest_prompt = self.firebase_service.get_latest_prompt()
+            if not latest_prompt or 'master_weekly_summary_prompt' not in latest_prompt:
+                print("❌ Prompt não encontrado no Firestore")
+                return {
+                    'master_summary': '',
+                    'has_master_summary': False
+                }
+
+            # Create a comprehensive prompt with all channel summaries
+            channels_info = "\n\n".join([
+                f"Canal: {summary['channel_title']}\n{summary['summary']}"
+                for summary in channel_summaries
+            ])
+
+            prompt = f"{latest_prompt['master_weekly_summary_prompt']}\n\n{channels_info}"
+
+            message = self.anthropic.messages.create(
+                model="claude-3-sonnet-20240229",
+                max_tokens=1500,
+                temperature=0.7,
+                system="Você é um especialista em análise de conteúdo digital, capaz de identificar tendências e conexões entre diferentes canais e tópicos.",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+
+            summary_text = message.content[0].text if isinstance(message.content, list) else message.content.text
+
+            return {
+                'master_summary': summary_text,
+                'has_master_summary': True
+            }
+        except Exception as e:
+            print(f"❌ Erro ao gerar resumo master semanal: {str(e)}")
+            return {
+                'master_summary': '',
+                'has_master_summary': False
             } 

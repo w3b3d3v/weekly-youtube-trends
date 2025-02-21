@@ -2,6 +2,7 @@ from firebase_service import FirebaseService
 from youtube_service import YouTubeService
 from cli import handle_cli_commands
 import time
+from claude_service import ClaudeService
 
 def process_pending_channels(firebase_service, youtube_service):
     """Process channels with PENDING status to get their channel IDs"""
@@ -38,7 +39,8 @@ def main():
     print("Iniciando o processo de atualização...")
     firebase_service = FirebaseService()
     youtube_service = YouTubeService(firebase_service)
-    
+    claude_service = ClaudeService(firebase_service)
+
     # First process any pending channels
     process_pending_channels(firebase_service, youtube_service)
     
@@ -46,6 +48,8 @@ def main():
     print("\nBuscando canais ativos do Firebase...")
     channels = firebase_service.get_active_channels()
     print(f"Encontrados {len(channels)} canais ativos para processar")
+    
+    all_weekly_summaries = []  # Store all weekly summaries
     
     for channel in channels:
         print(f"\nProcessando canal: {channel['channel_id']}")
@@ -103,6 +107,12 @@ def main():
                     'title': f"{channel_info['title']}"
                 }
                 firebase_service.save_insight(insight_data)
+                
+                # Store weekly summary for consolidated summary
+                all_weekly_summaries.append({
+                    'channel_title': channel_info['title'],
+                    'summary': weekly_summary['weekly_summary']
+                })
             
             # Respect YouTube API quotas
             print("Aguardando 1 segundo antes do próximo canal...")
@@ -111,6 +121,25 @@ def main():
         except Exception as e:
             print(f"❌ Erro ao processar canal {channel['channel_id']}: {str(e)}")
             continue
+
+    # Generate consolidated summary after processing all channels
+    if all_weekly_summaries:
+        print("\nGerando resumo consolidado de todos os canais...")
+        
+        master_summary = claude_service.create_master_weekly_summary(all_weekly_summaries)
+        
+        if master_summary['has_master_summary']:
+            # Save consolidated summary as an insight
+            consolidated_insight = {
+                'content': master_summary['master_summary'],
+                'type': 'consolidated_weekly',
+                'title': 'Resumo Semanal Consolidado',
+                'origin_id': 'consolidated_weekly'
+            }
+            firebase_service.save_insight(consolidated_insight)
+            print("Resumo consolidado gerado e salvo com sucesso!")
+        else:
+            print("❌ Não foi possível gerar o resumo consolidado")
 
     print("\nProcessamento finalizado!")
 
