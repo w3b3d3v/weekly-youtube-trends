@@ -62,4 +62,41 @@ class FirebaseService:
             "created_at": datetime.now()
         }
         
-        return self.db.collection('channels').add(channel_data) 
+        return self.db.collection('channels').add(channel_data)
+
+    def get_pending_channels(self):
+        """Get all channels with PENDING status"""
+        print("Buscando canais pendentes do Firestore...")
+        channels_ref = self.db.collection('channels')
+        pending_channels = channels_ref.where(filter=firestore.FieldFilter('status', '==', 'PENDING')).stream()
+        
+        channels = []
+        for doc in pending_channels:
+            channel_data = doc.to_dict()
+            channel_data['doc_id'] = doc.id
+            channels.append(channel_data)
+        
+        print(f"Total de canais pendentes encontrados: {len(channels)}")
+        return channels
+
+    def get_active_channels(self):
+        """Get all channels with ACTIVE status"""
+        print("Buscando canais ativos do Firestore...")
+        channels_ref = self.db.collection('channels')
+        active_channels = channels_ref.where(filter=firestore.FieldFilter('status', '==', 'ACTIVE')).stream()
+        
+        channels = []
+        for doc in active_channels:
+            channel_data = doc.to_dict()
+            channel_data['doc_id'] = doc.id
+            channels.append(channel_data)
+        
+        print(f"Total de canais ativos encontrados: {len(channels)}")
+        return channels
+
+    def update_channel_status(self, doc_id, update_data):
+        """Update channel status and other fields"""
+        print(f"Atualizando canal {doc_id} com: {update_data}")
+        channel_ref = self.db.collection('channels').document(doc_id)
+        update_data['updated_at'] = datetime.now()
+        channel_ref.update(update_data) 

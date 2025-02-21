@@ -5,6 +5,8 @@ from config import YOUTUBE_API_KEY
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptAvailable, TranscriptsDisabled
 from claude_service import ClaudeService
+import requests
+import re
 
 class YouTubeService:
     def __init__(self):
@@ -144,4 +146,42 @@ class YouTubeService:
             'view_count': stats.get('viewCount', 0),
             'like_count': stats.get('likeCount', 0),
             'comment_count': stats.get('commentCount', 0)
-        } 
+        }
+
+    def extract_channel_id_from_url(self, url):
+        """Extract channel ID from a YouTube channel URL
+        
+        Supports URLs in formats:
+        - youtube.com/channel/UC... (channel ID)
+        - youtube.com/c/... (custom URL)
+        - youtube.com/@... (handle)
+        """
+        try:
+            response = requests.get(url)
+            if response.status_code != 200:
+                print(f"❌ Erro ao acessar URL: {url}")
+                return None
+
+            # First try to find channel ID in URL
+            channel_id_match = re.search(r'youtube\.com/channel/(UC[\w-]+)', url)
+            if channel_id_match:
+                return channel_id_match.group(1)
+
+            html_content = response.text
+            
+            # Try to find channel ID in RSS feed URL
+            rss_match = re.search(r'channel_id=(UC[\w-]+)', html_content)
+            if rss_match:
+                return rss_match.group(1)
+
+            # If not found in RSS, try the channelId in meta data
+            channel_id_match = re.search(r'"channelId":"(UC[\w-]+)"', html_content)
+            if channel_id_match:
+                return channel_id_match.group(1)
+            
+            print(f"❌ Não foi possível encontrar o ID do canal na URL: {url}")
+            return None
+
+        except Exception as e:
+            print(f"❌ Erro ao processar URL do canal: {str(e)}")
+            return None 
