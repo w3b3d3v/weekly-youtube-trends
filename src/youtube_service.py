@@ -9,10 +9,10 @@ import requests
 import re
 
 class YouTubeService:
-    def __init__(self):
+    def __init__(self, firebase_service):
         print("Inicializando serviço do YouTube...")
         self.youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
-        self.claude_service = ClaudeService()
+        self.claude_service = ClaudeService(firebase_service)
 
     def get_channel_info(self, channel_id):
         """Get channel information"""

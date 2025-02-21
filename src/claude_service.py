@@ -1,10 +1,12 @@
 from anthropic import Anthropic
+from firebase_service import FirebaseService
 import os
 
 class ClaudeService:
-    def __init__(self):
+    def __init__(self, firebase_service):
         print("Inicializando serviço do Claude...")
         self.anthropic = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+        self.firebase_service = firebase_service
 
     def summarize_transcript(self, transcript, video_title):
         """Generate a summary of the video transcript using Claude"""
@@ -15,11 +17,27 @@ class ClaudeService:
             }
 
         try:
-            prompt = f"""Por favor, faça um resumo conciso do seguinte vídeo intitulado "{video_title}". 
-            Mantenha o resumo em aproximadamente 3-4 parágrafos.
+            # Get prompt from Firebase
+            latest_prompt = self.firebase_service.get_latest_prompt()
+            if not latest_prompt or 'video_summary_prompt' not in latest_prompt:
+                print("❌ Prompt não encontrado no Firestore")
+                return {
+                    'summary': '',
+                    'has_summary': False
+                }
+
+            # Replace parameters in prompt template
+            prompt_template = latest_prompt['video_summary_prompt']
+            replacements = {
+                '%VIDEO_TITLE': video_title,
+            }
             
-            Transcrição:
-            {transcript}"""
+            for key, value in replacements.items():
+                if value:  # Only replace if value is not empty
+                    prompt_template = prompt_template.replace(key, value)
+
+            prompt = f"{prompt_template}\n{transcript}"
+            print("prompt", prompt)
 
             message = self.anthropic.messages.create(
                 model="claude-3-sonnet-20240229",
@@ -45,7 +63,7 @@ class ClaudeService:
                 'has_summary': False
             }
 
-    def create_weekly_channel_summary(self, channel_title, videos):
+    def create_weekly_channel_summary(self, channel_name, videos):
         """Create a summary of the channel's content for the past week"""
         try:
             # Filter videos with summaries
@@ -57,18 +75,33 @@ class ClaudeService:
                     'has_weekly_summary': False
                 }
 
+            # Get prompt from Firebase
+            latest_prompt = self.firebase_service.get_latest_prompt()
+            if not latest_prompt or 'channel_weekly_summary_prompt' not in latest_prompt:
+                print("❌ Prompt não encontrado no Firestore")
+                return {
+                    'weekly_summary': '',
+                    'has_weekly_summary': False
+                }
+
+            # Replace parameters in prompt template
+            prompt_template = latest_prompt['channel_weekly_summary_prompt']
+            replacements = {
+                '%CHANNEL_NAME': channel_name,
+            }
+            
+            for key, value in replacements.items():
+                if value:  # Only replace if value is not empty
+                    prompt_template = prompt_template.replace(key, value)
+
             # Create a comprehensive prompt with all video information
             videos_info = "\n\n".join([
                 f"Vídeo: {v['title']}\nResumo: {v['summary']}"
                 for v in videos_with_summaries
             ])
 
-            prompt = f"""Analise os vídeos do canal "{channel_title}" publicados na última semana e crie um resumo geral 
-            destacando os principais temas e assuntos abordados. Liste os tópicos mais relevantes e identifique 
-            padrões ou séries de conteúdo.
-
-            Dados dos vídeos da semana:
-            {videos_info}"""
+            prompt = f"{prompt_template}\n{videos_info}"
+            print("prompt", prompt)
 
             message = self.anthropic.messages.create(
                 model="claude-3-sonnet-20240229",

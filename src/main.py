@@ -37,7 +37,7 @@ def main():
         
     print("Iniciando o processo de atualização...")
     firebase_service = FirebaseService()
-    youtube_service = YouTubeService()
+    youtube_service = YouTubeService(firebase_service)
     
     # First process any pending channels
     process_pending_channels(firebase_service, youtube_service)

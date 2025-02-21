@@ -64,7 +64,8 @@ class FirebaseService:
             "name": channel_name,
             "url": channel_url,
             "status": "PENDING",
-            "created_at": datetime.now()
+            "created_at": datetime.now(),
+            "platform": "Youtube"
         }
         
         return self.db.collection('channels').add(channel_data)
@@ -103,5 +104,16 @@ class FirebaseService:
         """Update channel status and other fields"""
         print(f"Atualizando canal {doc_id} com: {update_data}")
         channel_ref = self.db.collection('channels').document(doc_id)
-        update_data['updated_at'] = datetime.now()
-        channel_ref.update(update_data) 
+        channel_ref.update(update_data)
+
+    def get_latest_prompt(self):
+        """Get the most recent prompt document from Firestore"""
+        print("Buscando prompt mais recente do Firestore...")
+        prompts_ref = self.db.collection('prompts')
+        # Get the latest prompt ordered by timestamp
+        latest_prompt = prompts_ref.order_by('created_at', direction=firestore.Query.DESCENDING).limit(1).stream()
+        
+        # Get the first (and only) document
+        for doc in latest_prompt:
+            return doc.to_dict()
+        return None
