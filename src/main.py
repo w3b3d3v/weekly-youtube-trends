@@ -1,8 +1,14 @@
 from firebase_service import FirebaseService
 from youtube_service import YouTubeService
+from cli import handle_cli_commands
 import time
 
 def main():
+    # Check if there's a CLI command to handle
+    if handle_cli_commands():
+        return
+        
+    # If no CLI command, proceed with the regular update process
     print("Iniciando o processo de atualização...")
     firebase_service = FirebaseService()
     youtube_service = YouTubeService()

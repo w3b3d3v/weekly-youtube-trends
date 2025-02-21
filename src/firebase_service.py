@@ -51,4 +51,15 @@ class FirebaseService:
         doc = video_ref.get()
         exists = doc.exists
         print(f"Verificando vídeo {video_id}: {'Existe' if exists else 'Não existe'}")
-        return doc.to_dict() if exists else None 
+        return doc.to_dict() if exists else None
+
+    def add_channel(self, channel_name, channel_url):
+        """Add a new channel to Firestore with PENDING status"""
+        channel_data = {
+            "name": channel_name,
+            "url": channel_url,
+            "status": "PENDING",
+            "created_at": datetime.now()
+        }
+        
+        return self.db.collection('channels').add(channel_data) 
