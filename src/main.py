@@ -46,42 +46,40 @@ def main():
     print("\nBuscando canais ativos do Firebase...")
     channels = firebase_service.get_active_channels()
     print(f"Encontrados {len(channels)} canais ativos para processar")
-    return
     
     for channel in channels:
         print(f"\nProcessando canal: {channel['channel_id']}")
         try:
-            # Check if channel exists and has subscriber count
-            existing_channel = firebase_service.get_channel(channel['channel_id'])
-            
-            # Check if the channel was updated within the last day
-            if existing_channel and 'updated_at' in existing_channel:
-                last_updated = existing_channel['updated_at'].timestamp()
+            # Skip if updated in last 24 hours
+            if 'updated_at' in channel:
+                last_updated = channel['updated_at'].timestamp()
                 if time.time() - last_updated < 86400:
                     print(f"Canal {channel['channel_id']} já foi atualizado nas últimas 24 horas.")
                     continue
             
-            # Get and update channel info
+            # Get channel info and recent videos
+            print("Buscando informações e vídeos recentes...")
             channel_info = youtube_service.get_channel_info(channel['channel_id'])
-            if channel_info:
-                print(f"Informações do canal obtidas: {channel_info['title']}")
-                
-            # Get recent videos and channel summary
-            print("Buscando vídeos recentes...")
-            videos, updated_channel_info = youtube_service.get_recent_videos(channel['channel_id'])
-            print(f"Encontrados {len(videos)} vídeos nos últimos 7 dias")
+            videos, weekly_summary = youtube_service.get_recent_videos(channel['channel_id'])
             
-            # Save videos
+            if channel_info:
+                # Merge all channel data
+                updated_channel = {
+                    **channel_info,
+                    **(weekly_summary or {}),
+                    'doc_id': channel['doc_id']  # Keep the Firestore document ID
+                }
+                
+                # Save updated channel info
+                print(f"Atualizando informações do canal: {channel_info['title']}")
+                firebase_service.save_channel_data(updated_channel)
+            
+            # Save new videos
+            print(f"Encontrados {len(videos)} vídeos nos últimos 7 dias")
             for video in videos:
-                existing_video = firebase_service.get_video(video['id'])
-                if not existing_video:
+                if not firebase_service.get_video(video['id']):
                     print(f"Salvando novo vídeo: {video['title']}")
                     firebase_service.save_video_data(video)
-            
-            # Update channel with new info including weekly summary
-            if updated_channel_info:
-                print("Salvando novas informações do canal com resumo semanal...")
-                firebase_service.save_channel_data(updated_channel_info)
             
             # Respect YouTube API quotas
             print("Aguardando 1 segundo antes do próximo canal...")

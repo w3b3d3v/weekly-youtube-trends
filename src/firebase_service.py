@@ -26,8 +26,13 @@ class FirebaseService:
 
     def save_channel_data(self, channel_data):
         """Save or update channel data"""
-        print(f"Salvando dados do canal: {channel_data['title']}")
-        channel_ref = self.db.collection('channels').document(channel_data['id'])
+        doc_id = channel_data.pop('doc_id', None)  # Remove doc_id from data to be saved
+        if not doc_id:
+            print("❌ Erro: doc_id não fornecido para atualização do canal")
+            return
+        
+        print(f"Atualizando dados do canal: {channel_data.get('title', '')}")
+        channel_ref = self.db.collection('channels').document(doc_id)
         channel_data['updated_at'] = datetime.now()
         channel_ref.set(channel_data, merge=True)
 

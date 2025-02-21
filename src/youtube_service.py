@@ -22,7 +22,6 @@ class YouTubeService:
             id=channel_id
         )
         response = request.execute()
-        print("response: ", response)
         
         if not response['items']:
             print(f"❌ Canal não encontrado: {channel_id}")
