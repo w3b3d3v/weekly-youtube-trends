@@ -63,10 +63,9 @@ def main():
             videos, weekly_summary = youtube_service.get_recent_videos(channel['channel_id'])
             
             if channel_info:
-                # Merge all channel data
+                # Save channel info without the summary
                 updated_channel = {
                     **channel_info,
-                    **(weekly_summary or {}),
                     'doc_id': channel['doc_id']  # Keep the Firestore document ID
                 }
                 
@@ -74,12 +73,36 @@ def main():
                 print(f"Atualizando informações do canal: {channel_info['title']}")
                 firebase_service.save_channel_data(updated_channel)
             
-            # Save new videos
+            # Process and save videos and their summaries separately
             print(f"Encontrados {len(videos)} vídeos nos últimos 7 dias")
             for video in videos:
-                if not firebase_service.get_video(video['id']):
+                video_exists = firebase_service.get_video(video['id'])
+                if not video_exists:
+                    # Extract summary before saving video
+                    video_summary = video.pop('summary', None)
+                    
                     print(f"Salvando novo vídeo: {video['title']}")
                     firebase_service.save_video_data(video)
+
+                    # Save video summary as an insight if it exists
+                    if video_summary:
+                        insight_data = {
+                            'content': video_summary,
+                            'origin_id': video['id'],
+                            'type': 'video',
+                            'title': f"{video['title']}"
+                        }
+                        firebase_service.save_insight(insight_data)
+
+            # After processing all videos, save the weekly summary if it exists
+            if weekly_summary:
+                insight_data = {
+                    'content': weekly_summary['weekly_summary'],
+                    'origin_id': channel['channel_id'],
+                    'type': 'channel',
+                    'title': f"{channel_info['title']}"
+                }
+                firebase_service.save_insight(insight_data)
             
             # Respect YouTube API quotas
             print("Aguardando 1 segundo antes do próximo canal...")

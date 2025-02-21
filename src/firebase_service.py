@@ -117,3 +117,20 @@ class FirebaseService:
         for doc in latest_prompt:
             return doc.to_dict()
         return None
+
+    def save_insight(self, insight_data):
+        """Save a new insight to Firestore"""
+        print(f"Salvando insight para: {insight_data.get('origin_id', 'Unknown')}")
+        insight_ref = self.db.collection('insights').document()
+        insight_data['created_at'] = datetime.now()
+        insight_ref.set(insight_data)
+
+    def get_insight_by_origin(self, origin_id):
+        """Get an insight by its origin_id"""
+        print(f"Verificando insight para origin_id: {origin_id}")
+        insights_ref = self.db.collection('insights')
+        insights = insights_ref.where(filter=firestore.FieldFilter('origin_id', '==', origin_id)).limit(1).stream()
+        
+        for doc in insights:
+            return doc.to_dict()
+        return None

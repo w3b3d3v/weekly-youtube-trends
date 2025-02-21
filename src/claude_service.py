@@ -37,7 +37,6 @@ class ClaudeService:
                     prompt_template = prompt_template.replace(key, value)
 
             prompt = f"{prompt_template}\n{transcript}"
-            print("prompt", prompt)
 
             message = self.anthropic.messages.create(
                 model="claude-3-sonnet-20240229",
@@ -101,7 +100,6 @@ class ClaudeService:
             ])
 
             prompt = f"{prompt_template}\n{videos_info}"
-            print("prompt", prompt)
 
             message = self.anthropic.messages.create(
                 model="claude-3-sonnet-20240229",
