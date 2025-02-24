@@ -2,18 +2,26 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
 import os
+from config import FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS
 
 class FirebaseService:
     def __init__(self):
         print("Inicializando serviço do Firebase...")
-        # Initialize Firebase Admin SDK with your service account
-        # Load your service account's private key JSON file
-        cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        print(f"Usando credenciais do arquivo: {cred_path}")
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred, {
-            'projectId': os.getenv('FIREBASE_PROJECT_ID'),
-        })
+        
+        # Check if Firebase app is already initialized
+        if not firebase_admin._apps:
+            # When running in Cloud Functions, the environment is already authenticated
+            # Only use credentials file when running locally
+            if GOOGLE_APPLICATION_CREDENTIALS:
+                print(f"Usando credenciais do arquivo local")
+                cred = credentials.Certificate(GOOGLE_APPLICATION_CREDENTIALS)
+                firebase_admin.initialize_app(cred, {
+                    'projectId': FIREBASE_PROJECT_ID,
+                })
+            else:
+                print("Usando autenticação do ambiente cloud")
+                firebase_admin.initialize_app()
+                
         self.db = firestore.client()
 
     def get_channels(self):
@@ -82,7 +90,7 @@ class FirebaseService:
             channel_data['doc_id'] = doc.id
             channels.append(channel_data)
         
-        print(f"Total de canais pendentes encontrados: {len(channels)}")
+        print(f"Total de canais pendentes encontrados: {len(channels)}", channels)
         return channels
 
     def get_active_channels(self):

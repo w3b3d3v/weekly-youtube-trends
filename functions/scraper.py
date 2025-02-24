@@ -8,6 +8,7 @@ def process_pending_channels(firebase_service, youtube_service):
     """Process channels with PENDING status to get their channel IDs"""
     print("\nVerificando canais pendentes...")
     pending_channels = firebase_service.get_pending_channels()
+    print("pending_channels", pending_channels)
     
     for channel in pending_channels:
         print(f"\nProcessando canal pendente: {channel['name']}")

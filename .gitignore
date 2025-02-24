@@ -1,4 +1,7 @@
-weekly-trends-env/
+venv/
+**/venv/
 .env
-firebase-credentials.json
-*/__pycache__
+**/firebase-credentials.json
+**/__pycache__
+**/firebase-debug.log
+**/firestore-debug.log

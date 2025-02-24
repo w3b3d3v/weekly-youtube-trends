@@ -1,11 +1,12 @@
 from anthropic import Anthropic
 from firebase_service import FirebaseService
+from config import ANTHROPIC_API_KEY
 import os
 
 class ClaudeService:
     def __init__(self, firebase_service):
         print("Inicializando serviço do Claude...")
-        self.anthropic = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+        self.anthropic = Anthropic(api_key=ANTHROPIC_API_KEY)
         self.firebase_service = firebase_service
 
     def summarize_transcript(self, transcript, video_title):
