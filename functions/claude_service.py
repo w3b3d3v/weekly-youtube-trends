@@ -41,7 +41,7 @@ class ClaudeService:
 
             message = self.anthropic.messages.create(
                 model="claude-3-sonnet-20240229",
-                max_tokens=1000,
+                max_tokens=4096,
                 temperature=0.7,
                 system="Você é um assistente especializado em criar resumos concisos e informativos de conteúdo em vídeo. Listando os temas discutidos de forma clara",
                 messages=[
@@ -104,7 +104,7 @@ class ClaudeService:
 
             message = self.anthropic.messages.create(
                 model="claude-3-sonnet-20240229",
-                max_tokens=1000,
+                max_tokens=4096,
                 temperature=0.7,
                 system="Você é um assistente especializado em analisar conteúdo de canais do YouTube e identificar padrões e temas principais.",
                 messages=[
@@ -153,7 +153,7 @@ class ClaudeService:
 
             message = self.anthropic.messages.create(
                 model="claude-3-sonnet-20240229",
-                max_tokens=1500,
+                max_tokens=4096,
                 temperature=0.7,
                 system="Você é um especialista em análise de conteúdo digital, capaz de identificar tendências e conexões entre diferentes canais e tópicos.",
                 messages=[
