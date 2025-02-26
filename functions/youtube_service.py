@@ -13,6 +13,7 @@ class YouTubeService:
         print("Inicializando serviço do YouTube...")
         self.youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
         self.claude_service = ClaudeService(firebase_service)
+        self.firebase_service = firebase_service
 
     def get_channel_info(self, channel_id):
         """Get channel information"""
@@ -38,19 +39,51 @@ class YouTubeService:
         }
 
     def get_video_transcript(self, video_id):
-        """Get video transcript if available"""
+        """Get video transcript using youtube-transcript.io API"""
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'en'])
-            
-            # Combine all transcript pieces into one text
-            full_transcript = ' '.join([entry['text'] for entry in transcript_list])
-            
-            return {
-                'transcript': full_transcript,
-                'has_transcript': True
+            token = self.firebase_service.get_youtube_transcript_token()
+            if not token:
+                print("❌ Token de transcrição não encontrado")
+                return {
+                    'transcript': '',
+                    'has_transcript': False
+                }
+
+            url = "https://www.youtube-transcript.io/api/transcripts"
+            headers = {
+                "authorization": f"{token}",
+                "content-type": "application/json",
+                "referer": f"https://www.youtube-transcript.io/videos/{video_id}"
             }
-        except (NoTranscriptAvailable, TranscriptsDisabled) as e:
-            print(f"❌ Transcrição não disponível para o vídeo {video_id}: {str(e)}")
+            data = {"ids": [video_id]}
+            
+            response = requests.post(url, headers=headers, json=data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data and len(data) > 0:
+                    # Get the first transcript's tracks
+                    tracks = data[0].get('tracks', [])
+                    if tracks and len(tracks) > 0:
+                        # Get the first track's transcript
+                        transcript = tracks[0].get('transcript', [])
+                        if transcript:
+                            # Combine all transcript pieces into one text
+                            full_transcript = ' '.join([entry['text'] for entry in transcript])
+                            
+                            return {
+                                'transcript': full_transcript,
+                                'has_transcript': True
+                            }
+            
+            print(f"❌ Transcrição não disponível para o vídeo {video_id}")
+            return {
+                'transcript': '',
+                'has_transcript': False
+            }
+            
+        except Exception as e:
+            print(f"❌ Erro ao buscar transcrição para o vídeo {video_id}: {str(e)}")
             return {
                 'transcript': '',
                 'has_transcript': False

@@ -69,7 +69,7 @@ class FirebaseService:
     def add_channel(self, channel_name, channel_url):
         """Add a new channel to Firestore with PENDING status"""
         channel_data = {
-            "name": channel_name,
+            "title": channel_name,
             "url": channel_url,
             "status": "PENDING",
             "created_at": datetime.now(),
@@ -141,4 +141,50 @@ class FirebaseService:
         
         for doc in insights:
             return doc.to_dict()
+        return None
+
+    def get_latest_master_summary(self):
+        """Get the latest master summary from insights collection"""
+        insights_ref = self.db.collection('insights')
+        query = (insights_ref
+                 .where(filter=firestore.FieldFilter('type', '==', 'consolidated_weekly'))
+                 .stream())
+                 
+        # Get all consolidated weekly summaries and find the most recent one
+        latest_summary = None
+        latest_timestamp = None
+        
+        for doc in query:
+            data = doc.to_dict()
+            if 'created_at' in data:
+                if not latest_timestamp or data['created_at'] > latest_timestamp:
+                    latest_timestamp = data['created_at']
+                    latest_summary = data
+        
+        return latest_summary
+
+    def get_recent_channel_summaries(self, after_date):
+        """Get channel summaries created after the specified date"""
+        insights_ref = self.db.collection('insights')
+        query = (insights_ref
+                 .where(filter=firestore.FieldFilter('type', '==', 'channel'))
+                 .stream())
+                 
+        summaries = []
+        for doc in query:
+            data = doc.to_dict()
+            # Filter by date in memory instead of in query
+            if 'created_at' in data and data['created_at'] >= after_date:
+                summaries.append({
+                    'channel_title': data.get('title', 'Unknown Channel'),
+                    'summary': data.get('content', '')
+                })
+        return summaries
+
+    def get_youtube_transcript_token(self):
+        """Get the YouTube transcript bearer token from Firestore"""
+        print("Buscando token de transcrição do YouTube...")
+        token_ref = self.db.collection('tokens').limit(1).stream()
+        for doc in token_ref:
+            return doc.to_dict().get('token')
         return None
