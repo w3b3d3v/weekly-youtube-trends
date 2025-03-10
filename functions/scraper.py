@@ -106,6 +106,27 @@ def process_single_channel(channel):
             
             print(f"Atualizando informações do canal: {channel_info['title']}")
             firebase_service.save_channel_data(updated_channel)
+
+        # Process and save videos and their summaries separately
+        print(f"Encontrados {len(videos)} vídeos nos últimos 7 dias")
+        for video in videos:
+            video_exists = firebase_service.get_video(video['id'])
+            if not video_exists:
+                # Extract summary before saving video
+                video_summary = video.pop('summary', None)
+                
+                print(f"Salvando novo vídeo: {video['title']}")
+                firebase_service.save_video_data(video)
+
+                # Save video summary as an insight if it exists
+                if video_summary:
+                    insight_data = {
+                        'content': video_summary,
+                        'origin_id': video['id'],
+                        'type': 'video',
+                        'title': f"{video['title']}"
+                    }
+                    firebase_service.save_insight(insight_data)
         
         # After processing all videos, save the weekly summary if it exists
         if weekly_summary:

@@ -128,6 +128,10 @@ class FirebaseService:
 
     def save_insight(self, insight_data):
         """Save a new insight to Firestore"""
+        if not insight_data.get('content'):
+            print(f"Ignorando insight vazio para: {insight_data.get('origin_id', 'Unknown')}")
+            return
+            
         print(f"Salvando insight para: {insight_data.get('origin_id', 'Unknown')}")
         insight_ref = self.db.collection('insights').document()
         insight_data['created_at'] = datetime.now()
