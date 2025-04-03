@@ -38,6 +38,56 @@ def process_pending_channels():
             print(f"❌ Erro ao processar canal pendente {channel['name']}: {str(e)}")
             continue
 
+def process_missing_transcripts():
+    """
+    Process all videos that don't have transcripts yet.
+    Fetches transcripts using YouTube API and saves them to Firestore.
+    """
+    print("\n=== Processando vídeos sem transcrição ===")
+    
+    # Get all videos without transcripts
+    videos = firebase_service.get_videos_without_transcript()
+    
+    if not videos:
+        print("Nenhum vídeo encontrado sem transcrição.")
+        return
+        
+    print(f"Encontrados {len(videos)} vídeos para processar")
+    
+    for video in videos:
+        try:
+            print(f"\nBuscando transcrição para: {video['id']}")
+            
+            # Get transcript from YouTube
+            transcript_data = youtube_service.get_video_transcript(video['id'])
+            
+            # Keep all existing video data
+            updated_video = video.copy()
+            
+            # Only update transcript related fields
+            updated_video.update({
+                'transcript': transcript_data['transcript'],
+                'has_transcript': transcript_data['has_transcript'],
+                'updated_at': datetime.now(timezone.utc)
+            })
+            
+            # Save updated video data
+            firebase_service.save_video_data(updated_video)
+            
+            if transcript_data['has_transcript']:
+                print(f"✅ Transcrição salva com sucesso para: {video['id']}")
+            else:
+                print(f"⚠️ Nenhuma transcrição disponível para: {video['id']}")
+            
+            # Wait a bit to avoid rate limiting
+            time.sleep(1)
+            
+        except Exception as e:
+            print(f"❌ Erro ao processar transcrição do vídeo {video['id']}: {str(e)}")
+            continue
+    
+    print("\nProcessamento de transcrições finalizado!")
+
 def check_master_summary_exists(firebase_service):
     """Check if a master summary exists for the last 7 days"""
     seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7))

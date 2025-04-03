@@ -39,55 +39,37 @@ class YouTubeService:
         }
 
     def get_video_transcript(self, video_id):
-        """Get video transcript using youtube-transcript.io API"""
+        """Get video transcript using youtube_transcript_api, preferring Portuguese language"""
         try:
-            token = self.firebase_service.get_youtube_transcript_token()
-            if not token:
-                print("❌ Token de transcrição não encontrado")
+            # Primeiro tenta obter a transcrição em português
+            try:
+                transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['pt', 'pt-BR'])
+            except (NoTranscriptAvailable, TranscriptsDisabled):
+                # Se não encontrar em português, tenta qualquer idioma disponível
+                print(f"Transcrição em português não disponível para o vídeo {video_id}, tentando outros idiomas...")
+                transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+            
+            if transcript_list:
+                # Combina todas as partes da transcrição em um texto
+                full_transcript = ' '.join([entry['text'] for entry in transcript_list])
                 return {
-                    'transcript': '',
-                    'has_transcript': False
+                    'transcript': full_transcript,
+                    'has_transcript': True
                 }
-
-            url = "https://www.youtube-transcript.io/api/transcripts"
-            headers = {
-                "authorization": f"{token}",
-                "content-type": "application/json",
-                "referer": f"https://www.youtube-transcript.io/videos/{video_id}"
-            }
-            data = {"ids": [video_id]}
-            
-            response = requests.post(url, headers=headers, json=data)
-            
-            if response.status_code == 200:
-                data = response.json()
-                if data and len(data) > 0:
-                    # Get the first transcript's tracks
-                    tracks = data[0].get('tracks', [])
-                    if tracks and len(tracks) > 0:
-                        # Get the first track's transcript
-                        transcript = tracks[0].get('transcript', [])
-                        if transcript:
-                            # Combine all transcript pieces into one text
-                            full_transcript = ' '.join([entry['text'] for entry in transcript])
-                            
-                            return {
-                                'transcript': full_transcript,
-                                'has_transcript': True
-                            }
-            
+                
+        except (NoTranscriptAvailable, TranscriptsDisabled) as e:
             print(f"❌ Transcrição não disponível para o vídeo {video_id}")
-            return {
-                'transcript': '',
-                'has_transcript': False
-            }
+            print(f"Detalhes do erro: {str(e)}")
             
         except Exception as e:
-            print(f"❌ Erro ao buscar transcrição para o vídeo {video_id}: {str(e)}")
-            return {
-                'transcript': '',
-                'has_transcript': False
-            }
+            print(f"❌ Erro ao buscar transcrição para o vídeo {video_id}")
+            print(f"Detalhes do erro: {str(e)}")
+            print(f"Tipo do erro: {type(e).__name__}")
+            
+        return {
+            'transcript': '',
+            'has_transcript': False
+        }
 
     def get_recent_videos(self, channel_id):
         """Get videos published in the last 7 days"""

@@ -45,6 +45,7 @@ class FirebaseService:
         channel_ref.set(channel_data, merge=True)
 
     def save_video_data(self, video_data):
+        # print("save_video_data ->  video_data", video_data)
         """Save or update video data"""
         print(f"Salvando dados do vídeo: {video_data['title']}")
         video_ref = self.db.collection('videos').document(video_data['id'])
@@ -262,3 +263,33 @@ class FirebaseService:
             videos_data.sort(key=lambda x: x['last_updated'], reverse=True)
             
         return videos_data
+
+    def get_videos_without_transcript(self):
+        """
+        Get all videos that don't have transcripts yet
+        Returns a list of videos that have has_transcript=False or don't have the field
+        """
+        print("Buscando vídeos sem transcrição...")
+        videos_ref = self.db.collection('videos')
+        
+        # Get videos where has_transcript is False or field doesn't exist
+        query = videos_ref.where(
+            filter=firestore.FieldFilter('has_transcript', '==', False)
+        ).stream()
+        
+        videos = []
+        for doc in query:
+            video_data = doc.to_dict()
+            video_data['id'] = doc.id
+            videos.append(video_data)
+            
+        # Also get videos where has_transcript field doesn't exist
+        all_videos = videos_ref.stream()
+        for doc in all_videos:
+            video_data = doc.to_dict()
+            if 'has_transcript' not in video_data:
+                video_data['id'] = doc.id
+                videos.append(video_data)
+        
+        print(f"Total de vídeos sem transcrição: {len(videos)}")
+        return videos

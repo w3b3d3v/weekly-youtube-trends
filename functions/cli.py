@@ -105,10 +105,17 @@ def show_videos_updates_command():
     except Exception as e:
         print(f"Erro ao buscar datas de atualização dos vídeos: {str(e)}")
 
+def process_transcripts_command():
+    """
+    CLI command to process missing transcripts for all videos.
+    """
+    from scraper import process_missing_transcripts
+    process_missing_transcripts()
+
 def handle_cli_commands():
     """Handle CLI commands and arguments"""
     parser = argparse.ArgumentParser(description='YouTube Channel Manager')
-    parser.add_argument('--action', type=str, help='Action to perform (add_channel, show_channels_updates, show_videos_updates)')
+    parser.add_argument('--action', type=str, help='Action to perform (add_channel, show_channels_updates, show_videos_updates, process_transcripts)')
     
     args = parser.parse_args()
     
@@ -118,11 +125,14 @@ def handle_cli_commands():
         show_channels_updates_command()
     elif args.action == 'show_videos_updates':
         show_videos_updates_command()
+    elif args.action == 'process_transcripts':
+        process_transcripts_command()
     else:
         print("\nComandos disponíveis:")
         print("  --action add_channel           : Adicionar um novo canal do YouTube")
         print("  --action show_channels_updates : Mostrar datas de atualização dos canais")
         print("  --action show_videos_updates   : Mostrar datas de atualização dos vídeos")
+        print("  --action process_transcripts   : Processar transcrições faltantes dos vídeos")
         return False
     
     return True 
