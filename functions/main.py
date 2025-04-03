@@ -32,18 +32,3 @@ def daily_process_channels(event: scheduler_fn.ScheduledEvent) -> None:
             'status': 'error', 
             'message': str(e)
         }), 500
-
-@firestore_fn.on_document_created(document="channels/{channelId}")
-def on_channel_created(event: firestore_fn.Event) -> None:
-    """Cloud Function triggered when a new channel document is created."""
-    try:
-        main()
-        return jsonify({
-            'status': 'success', 
-            'message': 'New channel processed successfully'
-        })
-    except Exception as e:
-        return jsonify({
-            'status': 'error', 
-            'message': str(e)
-        }), 500
