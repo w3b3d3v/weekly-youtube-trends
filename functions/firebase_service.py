@@ -227,3 +227,38 @@ class FirebaseService:
             channels_data.sort(key=lambda x: x['last_updated'], reverse=True)
             
         return channels_data
+        
+    def get_videos_last_updated(self):
+        """
+        Get the last_updated field for all videos in Firestore
+        Returns a list of videos with their update information
+        """
+        print("Buscando datas de atualização de todos os vídeos...")
+        videos_ref = self.db.collection('videos')
+        docs = videos_ref.stream()
+        
+        videos_data = []
+        for doc in docs:
+            doc_data = doc.to_dict()
+            # Check for updated_at or created_at field
+            last_updated = doc_data.get('updated_at', doc_data.get('created_at'))
+            
+            # Get video data
+            title = doc_data.get('title', 'No Title')
+            channel_id = doc_data.get('channel_id', 'Unknown Channel')
+            published_at = doc_data.get('published_at')
+            
+            if last_updated:
+                videos_data.append({
+                    'id': doc.id,
+                    'title': title,
+                    'channel_id': channel_id,
+                    'published_at': published_at,
+                    'last_updated': last_updated
+                })
+        
+        # Sort by last_updated, newest first
+        if videos_data:
+            videos_data.sort(key=lambda x: x['last_updated'], reverse=True)
+            
+        return videos_data

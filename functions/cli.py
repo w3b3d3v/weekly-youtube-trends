@@ -65,10 +65,50 @@ def show_channels_updates_command():
     except Exception as e:
         print(f"Erro ao buscar datas de atualização dos canais: {str(e)}")
 
+def show_videos_updates_command():
+    """
+    CLI command to show the last_updated field for all videos.
+    Fetches and displays video update information.
+    """
+    print("\n=== Vídeos e Datas de Atualização ===")
+    
+    try:
+        # Initialize Firebase and fetch data
+        firebase = FirebaseService()
+        videos_data = firebase.get_videos_last_updated()
+        
+        if not videos_data:
+            print("Nenhum vídeo encontrado com dados de atualização.")
+            return
+            
+        # Print header
+        print("-" * 140)
+        print(f"{'ID':<15} | {'TÍTULO':<40} | {'CANAL':<25} | {'PUBLICADO EM':<20} | {'ATUALIZADO EM':<20}")
+        print("-" * 140)
+        
+        # Print each video
+        for video in videos_data:
+            # Format the dates for display
+            updated_str = video['last_updated'].strftime("%d/%m/%Y %H:%M:%S") if isinstance(video['last_updated'], datetime) else str(video['last_updated'])
+            published_str = video['published_at'].strftime("%d/%m/%Y %H:%M:%S") if isinstance(video.get('published_at'), datetime) else str(video.get('published_at', 'N/A'))
+            
+            # Truncate long fields
+            title = video['title'][:37] + "..." if len(video['title']) > 40 else video['title'].ljust(40)
+            id_str = video['id'][:12] + "..." if len(video['id']) > 15 else video['id'].ljust(15)
+            channel = video['channel_id'][:22] + "..." if len(video['channel_id']) > 25 else video['channel_id'].ljust(25)
+            
+            print(f"{id_str} | {title} | {channel} | {published_str:<20} | {updated_str:<20}")
+        
+        print("-" * 140)
+        print(f"Total de vídeos: {len(videos_data)}")
+            
+    except Exception as e:
+        print(f"Erro ao buscar datas de atualização dos vídeos: {str(e)}")
+
 def handle_cli_commands():
     """Handle CLI commands and arguments"""
     parser = argparse.ArgumentParser(description='YouTube Channel Manager')
-    parser.add_argument('--action', type=str, help='Action to perform (add_channel, show_channels_updates)')
+    parser.add_argument('--action', type=str, help='Action to perform (add_channel, show_channels_updates, show_videos_updates)')
     
     args = parser.parse_args()
     
@@ -76,10 +116,13 @@ def handle_cli_commands():
         add_channel_command()
     elif args.action == 'show_channels_updates':
         show_channels_updates_command()
+    elif args.action == 'show_videos_updates':
+        show_videos_updates_command()
     else:
         print("\nComandos disponíveis:")
         print("  --action add_channel           : Adicionar um novo canal do YouTube")
         print("  --action show_channels_updates : Mostrar datas de atualização dos canais")
+        print("  --action show_videos_updates   : Mostrar datas de atualização dos vídeos")
         return False
     
     return True 
