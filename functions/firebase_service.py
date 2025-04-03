@@ -192,3 +192,38 @@ class FirebaseService:
         for doc in token_ref:
             return doc.to_dict().get('token')
         return None
+        
+    def get_channels_last_updated(self):
+        """
+        Get the last_updated field for all channels in Firestore
+        Returns a list of channels with their update status
+        """
+        print("Buscando datas de atualização de todos os canais...")
+        channels_ref = self.db.collection('channels')
+        docs = channels_ref.stream()
+        
+        channels_data = []
+        for doc in docs:
+            doc_data = doc.to_dict()
+            # Check for updated_at or created_at field
+            last_updated = doc_data.get('updated_at', doc_data.get('created_at'))
+            
+            # Get channel status
+            status = doc_data.get('status', 'UNKNOWN')
+            
+            # Get channel title
+            title = doc_data.get('title', 'No Title')
+            
+            if last_updated:
+                channels_data.append({
+                    'id': doc.id,
+                    'title': title,
+                    'status': status,
+                    'last_updated': last_updated
+                })
+        
+        # Sort by last_updated, newest first
+        if channels_data:
+            channels_data.sort(key=lambda x: x['last_updated'], reverse=True)
+            
+        return channels_data

@@ -10,7 +10,7 @@ def run_full_process(req: https_fn.Request) -> None:
         main()
         return jsonify({
             'status': 'success',
-            'message': 'Full process completed successfully'
+            'message': 'Full process completed successfully!'
         })
     except Exception as e:
         return jsonify({
@@ -25,7 +25,7 @@ def daily_process_channels(event: scheduler_fn.ScheduledEvent) -> None:
         main()
         return jsonify({
             'status': 'success', 
-            'message': 'Weekly channel processing completed successfully'
+            'message': 'Daily channel processing completed successfully'
         })
     except Exception as e:
         return jsonify({
