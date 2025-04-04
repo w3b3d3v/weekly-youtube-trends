@@ -1,3 +1,25 @@
+"""
+Program Rules and Requirements
+----------------------------
+
+1. Channel Processing:
+   - Channels must have a valid YouTube channel ID to be processed
+
+2. Video Requirements:
+   - Videos must be from the last 7 days
+   - Only videos with transcripts are considered for summaries
+   - At least one video with transcript is required to generate a channel summary
+
+3. Summary Generation:
+   - Individual video summaries are generated for videos with transcripts
+   - Weekly channel summaries are created if there's at least one video with transcript
+   - Master summary combines all channel summaries from the last 7 days
+
+4. Update Frequency:
+   - Channels are only updated if not processed in the last 24 hours
+   - Master summary is only generated if none exists for the last 7 days
+"""
+
 from firebase_service import FirebaseService
 from youtube_service import YouTubeService
 from cli import handle_cli_commands
@@ -145,54 +167,90 @@ def process_single_channel(channel):
         # Get channel info and recent videos
         print("Buscando informações e vídeos recentes...")
         channel_info = youtube_service.get_channel_info(channel['channel_id'])
-        videos, weekly_summary = youtube_service.get_recent_videos(channel['channel_id'])
+        videos = youtube_service.get_recent_videos(channel['channel_id'])
         
-        if channel_info:
-            # Save channel info
-            updated_channel = {
-                **channel_info,
-                'doc_id': channel['doc_id']
-            }
+        if not channel_info:
+            print(f"❌ Não foi possível obter informações do canal {channel['channel_id']}")
+            return None
             
-            print(f"Atualizando informações do canal: {channel_info['title']}")
-            firebase_service.save_channel_data(updated_channel)
+        # Save channel info
+        updated_channel = {
+            **channel_info,
+            'doc_id': channel['doc_id']
+        }
+        
+        print(f"Atualizando informações do canal: {channel_info['title']}")
+        firebase_service.save_channel_data(updated_channel)
 
         # Process and save videos and their summaries separately
         print(f"Encontrados {len(videos)} vídeos nos últimos 7 dias")
+        
+        # First, save all videos and try to get their transcripts
         for video in videos:
             video_exists = firebase_service.get_video(video['id'])
             if not video_exists:
-                # Extract summary before saving video
-                video_summary = video.pop('summary', None)
-                
                 print(f"Salvando novo vídeo: {video['title']}")
                 firebase_service.save_video_data(video)
-
-                # Save video summary as an insight if it exists
-                if video_summary:
-                    insight_data = {
-                        'content': video_summary,
-                        'origin_id': video['id'],
-                        'type': 'video',
-                        'title': f"{video['title']}"
-                    }
-                    firebase_service.save_insight(insight_data)
         
-        # After processing all videos, save the weekly summary if it exists
-        if weekly_summary:
-            insight_data = {
-                'content': weekly_summary['weekly_summary'],
-                'origin_id': channel['channel_id'],
-                'type': 'channel',
-                'title': f"{channel_info['title']}",
-                'created_at': datetime.now(timezone.utc)
-            }
-            firebase_service.save_insight(insight_data)
+        # Check if at least one video has transcript
+        has_any_transcript = False
+        videos_with_transcripts = []
+        videos_without_transcripts = []
+        
+        for video in videos:
+            video_data = firebase_service.get_video(video['id'])
+            if video_data and video_data.get('has_transcript', False):
+                has_any_transcript = True
+                videos_with_transcripts.append(video_data)
+            else:
+                print(f"⚠️ Vídeo sem transcrição: {video['title']}")
+                videos_without_transcripts.append(video)
+        
+        if not has_any_transcript:
+            print(f"❌ Pulando resumo semanal para {channel_info['title']} - nenhum vídeo tem transcrição")
+            return None
             
-            return {
-                'channel_title': channel_info['title'],
-                'summary': weekly_summary['weekly_summary']
-            }
+        print(f"✅ {len(videos_with_transcripts)} vídeos com transcrição encontrados")
+        if videos_without_transcripts:
+            print(f"⚠️ {len(videos_without_transcripts)} vídeos sem transcrição serão ignorados no resumo")
+            
+        # Generate and save summaries for videos with transcripts
+        videos_with_summaries = []
+        for video in videos_with_transcripts:
+            summary_data = youtube_service.generate_video_summary(video)
+            if summary_data['has_summary']:
+                video.update(summary_data)
+                videos_with_summaries.append(video)
+                
+                insight_data = {
+                    'content': summary_data['summary'],
+                    'origin_id': video['id'],
+                    'type': 'video',
+                    'title': f"{video['title']}"
+                }
+                firebase_service.save_insight(insight_data)
+        
+        # Generate weekly channel summary if we have videos with summaries
+        if videos_with_summaries:
+            weekly_summary = youtube_service.generate_weekly_channel_summary(
+                channel_info['title'],
+                videos_with_summaries
+            )
+            
+            if weekly_summary['has_weekly_summary']:
+                insight_data = {
+                    'content': weekly_summary['weekly_summary'],
+                    'origin_id': channel['channel_id'],
+                    'type': 'channel',
+                    'title': f"{channel_info['title']}",
+                    'created_at': datetime.now(timezone.utc)
+                }
+                firebase_service.save_insight(insight_data)
+                
+                return {
+                    'channel_title': channel_info['title'],
+                    'summary': weekly_summary['weekly_summary']
+                }
             
         return None
         
@@ -207,7 +265,7 @@ def run_full_process():
         
     print("Iniciando o processo de atualização...")
     
-    # Process any pending channels first
+    # Process any pending channels first -> get channel ID from channel URL
     process_pending_channels()
     
     # Process active channels to update their summaries
@@ -215,6 +273,7 @@ def run_full_process():
     channels = firebase_service.get_active_channels()
     print(f"Encontrados {len(channels)} canais ativos para processar")
     
+    # Store each individual channel weekly summary
     all_weekly_summaries = []
     
     for channel in channels:

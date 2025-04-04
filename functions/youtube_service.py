@@ -110,38 +110,11 @@ class YouTubeService:
                 transcript_data = self.get_video_transcript(video_data['id'])
                 video_data.update(transcript_data)
                 
-                # Generate summary if transcript is available
-                if video_data['has_transcript']:
-                    print(f"Gerando resumo para o vídeo: {video_data['title']}")
-                    summary_data = self.claude_service.summarize_transcript(
-                        video_data['transcript'],
-                        video_data['title']
-                    )
-                    video_data.update(summary_data)
-                else:
-                    video_data.update({
-                        'summary': '',
-                        'has_summary': False
-                    })
-                
                 videos.append(video_data)
             
             request = self.youtube.search().list_next(request, response)
             
-        # After processing all videos, create a weekly channel summary
-        if videos:
-            print(f"Gerando resumo semanal para o canal...")
-            channel_info = self.get_channel_info(channel_id)
-            if channel_info:
-                weekly_summary = self.claude_service.create_weekly_channel_summary(
-                    channel_info['title'],
-                    videos
-                )
-                # Update channel info with weekly summary
-                channel_info.update(weekly_summary)
-                return videos, channel_info
-            
-        return videos, None
+        return videos
 
     def get_video_statistics(self, video_id):
         """Get video statistics"""
@@ -199,3 +172,25 @@ class YouTubeService:
         except Exception as e:
             print(f"❌ Erro ao processar URL do canal: {str(e)}")
             return None 
+
+    def generate_video_summary(self, video_data):
+        """Generate summary for a single video if it has transcript"""
+        if video_data['has_transcript']:
+            print(f"Gerando resumo para o vídeo: {video_data['title']}")
+            summary_data = self.claude_service.summarize_transcript(
+                video_data['transcript'],
+                video_data['title']
+            )
+            return summary_data
+        return {
+            'summary': '',
+            'has_summary': False
+        }
+        
+    def generate_weekly_channel_summary(self, channel_title, videos):
+        """Generate weekly summary for a channel based on its videos"""
+        print(f"Gerando resumo semanal para o canal {channel_title}...")
+        return self.claude_service.create_weekly_channel_summary(
+            channel_title,
+            videos
+        ) 
