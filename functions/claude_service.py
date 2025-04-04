@@ -9,7 +9,7 @@ class ClaudeService:
         self.anthropic = Anthropic(api_key=ANTHROPIC_API_KEY)
         self.firebase_service = firebase_service
 
-    def summarize_transcript(self, transcript, video_title):
+    def summarize_transcript(self, transcript, video_title, custom_prompt=None):
         """Generate a summary of the video transcript using Claude"""
         if not transcript:
             return {
@@ -18,26 +18,32 @@ class ClaudeService:
             }
 
         try:
-            # Get prompt from Firebase
-            latest_prompt = self.firebase_service.get_latest_prompt()
-            if not latest_prompt or 'video_summary_prompt' not in latest_prompt:
-                print("❌ Prompt não encontrado no Firestore")
-                return {
-                    'summary': '',
-                    'has_summary': False
+            prompt = ""
+            if custom_prompt:
+                # Use custom prompt if provided
+                prompt = f"{custom_prompt}\n\nVídeo: {video_title}\n\nTranscrição:\n{transcript}"
+            else:
+                # Get prompt from Firebase
+                latest_prompt = self.firebase_service.get_latest_prompt()
+                
+                if not latest_prompt or 'video_summary_prompt' not in latest_prompt:
+                    print("❌ Prompt não encontrado no Firestore")
+                    return {
+                        'summary': '',
+                        'has_summary': False
+                    }
+
+                # Replace parameters in prompt template
+                prompt_template = latest_prompt['video_summary_prompt']
+                replacements = {
+                    '%VIDEO_TITLE': video_title,
                 }
+                
+                for key, value in replacements.items():
+                    if value:  # Only replace if value is not empty
+                        prompt_template = prompt_template.replace(key, value)
 
-            # Replace parameters in prompt template
-            prompt_template = latest_prompt['video_summary_prompt']
-            replacements = {
-                '%VIDEO_TITLE': video_title,
-            }
-            
-            for key, value in replacements.items():
-                if value:  # Only replace if value is not empty
-                    prompt_template = prompt_template.replace(key, value)
-
-            prompt = f"{prompt_template}\n{transcript}"
+                prompt = f"{prompt_template}\n{transcript}"
 
             message = self.anthropic.messages.create(
                 model="claude-3-sonnet-20240229",
