@@ -24,7 +24,7 @@ def run_full_process(req: https_fn.Request) -> None:
             'message': str(e)
         }), 500
 
-@https_fn.on_request()
+@https_fn.on_request(timeout_sec=540)
 def generate_custom_summary(req: https_fn.Request) -> None:
     """Generate a custom summary for a video using a provided prompt."""
     try:
